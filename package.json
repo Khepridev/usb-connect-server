@@ -1,0 +1,13 @@
+{
+  "name": "usb-connect-signaling",
+  "version": "1.0.0",
+  "description": "Signaling server for USB Connect remote sharing",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.4",
+    "express": "^4.18.2"
+  }
+}
