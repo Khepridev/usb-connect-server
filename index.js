@@ -33,21 +33,44 @@ io.on('connection', (socket) => {
                 socket.to(room.host).emit('client-joined', socket.id);
                 socket.emit('joined-room', roomId);
             } else {
-                socket.emit('error', 'Room is full');
+                socket.emit('room-full', 'Room is full');
             }
         } else {
-            socket.emit('error', 'Room not found');
+            socket.emit('room-not-found', 'Room not found');
         }
     });
 
     socket.on('signal', ({ roomId, signal }) => {
-        // Forward signal to the other person in the room
         socket.to(roomId).emit('signal', { sender: socket.id, signal });
+    });
+
+    // USB device list: host sends, server forwards to client
+    socket.on('usb-device-list', ({ roomId, devices }) => {
+        socket.to(roomId).emit('usb-device-list', devices);
+        console.log(`USB device list sent in room: ${roomId}`);
+    });
+
+    // USB bind request: client sends, server forwards to host
+    socket.on('usb-bind-request', ({ roomId, busId }) => {
+        socket.to(roomId).emit('usb-bind-request', busId);
+        console.log(`USB bind request for ${busId} in room: ${roomId}`);
+    });
+
+    // USB share result: host sends IP+busId, server forwards to client
+    socket.on('usb-share-result', ({ roomId, busId, hostIp }) => {
+        socket.to(roomId).emit('usb-share-result', { busId, hostIp });
+        console.log(`USB share result: ${busId} at ${hostIp} in room: ${roomId}`);
     });
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
-        // Room cleanup could be added here
+        // Cleanup rooms
+        for (const [roomId, room] of rooms.entries()) {
+            if (room.host === socket.id || room.client === socket.id) {
+                socket.to(roomId).emit('peer-disconnected');
+                rooms.delete(roomId);
+            }
+        }
     });
 });
 
