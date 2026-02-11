@@ -57,9 +57,10 @@ io.on('connection', (socket) => {
     });
 
     // USB share result: host sends IP+busId, server forwards to client
-    socket.on('usb-share-result', ({ roomId, busId, hostIp }) => {
-        socket.to(roomId).emit('usb-share-result', { busId, hostIp });
-        console.log(`USB share result: ${busId} at ${hostIp} in room: ${roomId}`);
+    socket.on('usb-share-result', (data) => {
+        const { roomId, ...rest } = data;
+        socket.to(roomId).emit('usb-share-result', rest);
+        console.log(`USB share result in room: ${roomId}`, rest);
     });
 
     socket.on('disconnect', () => {
