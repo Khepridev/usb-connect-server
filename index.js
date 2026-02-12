@@ -94,9 +94,17 @@ io.on('connection', (socket) => {
         console.log('User disconnected:', socket.id);
         // Cleanup rooms
         for (const [roomId, room] of rooms.entries()) {
-            if (room.host === socket.id || room.client === socket.id) {
+            if (room.host === socket.id) {
+                // Host left: close the room and inform client.
                 socket.to(roomId).emit('peer-disconnected');
                 rooms.delete(roomId);
+                continue;
+            }
+
+            if (room.client === socket.id) {
+                // Client left: keep room alive so host ID remains usable.
+                room.client = null;
+                io.to(room.host).emit('peer-disconnected');
             }
         }
     });
