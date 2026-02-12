@@ -13,10 +13,31 @@ const io = new Server(server, {
 
 const rooms = new Map();
 
+app.get('/', (_, res) => {
+    res.status(200).send('USB Connect signaling server is running.');
+});
+
+app.get('/health', (_, res) => {
+    res.status(200).json({ ok: true });
+});
+
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     socket.on('create-room', (roomId) => {
+        if (!roomId) {
+            socket.emit('room-error', 'Room id is required');
+            return;
+        }
+
+        // Keep a single active host room per socket to avoid stale IDs on refresh.
+        for (const [existingRoomId, room] of rooms.entries()) {
+            if (room.host === socket.id) {
+                socket.leave(existingRoomId);
+                rooms.delete(existingRoomId);
+            }
+        }
+
         socket.join(roomId);
         rooms.set(roomId, { host: socket.id, client: null });
         console.log(`Room created: ${roomId} by ${socket.id}`);
@@ -45,8 +66,14 @@ io.on('connection', (socket) => {
     });
 
     // USB device list: host sends, server forwards to client
-    socket.on('usb-device-list', ({ roomId, devices }) => {
-        socket.to(roomId).emit('usb-device-list', devices);
+    socket.on('usb-device-list', (data = {}) => {
+        const { roomId, ...payload } = data;
+        if (!roomId) {
+            socket.emit('room-error', 'roomId is required for usb-device-list');
+            return;
+        }
+
+        socket.to(roomId).emit('usb-device-list', payload);
         console.log(`USB device list sent in room: ${roomId}`);
     });
 
